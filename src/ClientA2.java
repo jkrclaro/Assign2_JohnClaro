@@ -12,20 +12,20 @@ class ClientA2
 			DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
 			
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-			String msgin="";
-			String msgout="";
-			while(!msgin.equals("end"))
+			
+			while(true)
 			{
-//				System.out.println("Enter annual interest rate: ");
-//				String annualInterestRate = bufferedReader.readLine();
-//				System.out.println("Enter number of years: ");
-//				String numberOfYears = bufferedReader.readLine();
-//				System.out.println("Enter loan amount: ");
-//				String loanAmount = bufferedReader.readLine();
-				msgout = bufferedReader.readLine();
-				outputStream.writeUTF(msgout);
-				msgin = inputStream.readUTF();
-				System.out.println("MSGIN:" + msgin);
+				// Prompt data
+				System.out.println("Enter annual interest rate: ");
+				String annualInterestRate = bufferedReader.readLine();
+				System.out.println("Enter number of years: ");
+				String numberOfYears = bufferedReader.readLine();
+				System.out.println("Enter loan amount: ");
+				String loanAmount = bufferedReader.readLine();
+				
+				outputStream.writeUTF(annualInterestRate + "," + numberOfYears + "," + loanAmount);
+				Double msgin = inputStream.readDouble();
+				System.out.println(msgin);
 			}
 		}
 		catch(Exception e)
