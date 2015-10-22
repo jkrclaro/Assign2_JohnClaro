@@ -1,47 +1,63 @@
-import java.io.*;
-import java.net.*;
+import java.net.Socket;
+import java.io.DataInputStream;
+import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.List;
 
 class MultiThreadedServerA2
-{
+{	
 	public static void main(String[] args)
 	{
+		final int portNumber = 2994;
 		try
 		{
-			ServerSocket serverSocket = new ServerSocket(1201);
-			Socket socket = serverSocket.accept();
-			
-			DataInputStream inputStream = new DataInputStream(socket.getInputStream());
-			DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+			ServerSocket serverSocket = new ServerSocket(portNumber);
+			System.out.println("Server is currently listening at port " + portNumber);
 			
 			while (true)
 			{
-				String msgin = inputStream.readUTF();
-				List<String> values = Arrays.asList(msgin.split(","));
-				
-				Double annualInterestRate = Double.parseDouble(values.get(0));
-				Double numberOfYears = Double.parseDouble(values.get(1));
-				Double loanAmount = Double.parseDouble(values.get(2));
-				
-				double monthlyPayment = calculateMonthlyPayment(annualInterestRate, numberOfYears, loanAmount);
-				
-				outputStream.writeDouble(monthlyPayment);
+				try
+				{
+					Socket clientSocket = serverSocket.accept();
+					Thread thread = new Thread(new MyClient(clientSocket));
+					thread.start();
+					System.out.println("Number of clients currently connected: " + (Thread.activeCount() - 1));
+				}
+				catch (Exception e)
+				{
+					System.err.println("Error in connection attempt");
+				}
 			}
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
-			System.err.println(e);
+			System.err.println("Error in establishing a server");
 		}
 	}
+}
+
+class MyClient implements Runnable
+{	
+	private Socket socket;
+
+	public MyClient(Socket socket)
+	{	
+		this.socket = socket;
+	}
 	
-	public static double calculateMonthlyPayment(double annualInterestRate, double numberOfYears, double loanAmount)
+	public void run()
 	{
-		annualInterestRate /= 100.0;
-		double monthlyRate = annualInterestRate / 12.0;
-		double termInMonths = numberOfYears * 12;
-		double monthlyPayment = (loanAmount * monthlyRate) / (1-Math.pow(1+monthlyRate, -termInMonths));
-		
-		return monthlyPayment;
+		try
+		{
+			DataInputStream fromClient = new DataInputStream(socket.getInputStream());
+			while (true)
+			{
+				System.out.println(fromClient.readUTF());
+			}
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error in retrieving message from client");
+		}
 	}
 }
