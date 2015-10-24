@@ -1,4 +1,5 @@
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.DataInputStream;
@@ -21,48 +22,103 @@ import javax.swing.BorderFactory;
 
 public class ClientA2
 {	
-	public void login(Socket socket, DataOutputStream toServer, DataInputStream fromServer)
-	{	
-		try
-		{				
-			while (true)
-			{				
-				String input = JOptionPane.showInputDialog(null, "Account Number");
-				toServer.writeUTF("AccountNumber" + "," + input);
-				String fullName = fromServer.readUTF();
-				
-				// TODO: Handle user input when OK button is clicked and empty
-				if (input != null)
+	private Socket socket;
+	private DataOutputStream toServer;
+	private DataInputStream fromServer;
+	
+	public ClientA2() throws UnknownHostException, IOException
+	{
+		this.socket = null;
+		this.toServer = null;
+		this.fromServer = null;
+	}
+	
+	/**
+	 * Start asking user for an account number.
+	 * Keep asking user until a valid account number has been provided or the user wishes to cancel the prompt.
+	 * @return A valid account number.
+	 */
+	public String promptAccountNumber()
+	{
+		while (true)
+		{
+			String input = JOptionPane.showInputDialog(null, "Enter account number");
+			
+			if (input != null) // When user clicks OK
+			{
+				if (input.trim().isEmpty() != true && isNumeric(input) == true) // Check validity of input
 				{
-					if (fullName != "ABCDEFGHJKLMNOPQRSTUVWXYZ")
-					{
-						JOptionPane.showMessageDialog(null, "Welcome, " + fullName);
-						break;
-					}
-					else
-					{
-						JOptionPane.showMessageDialog(null, "Sorry, you are not a registered client", "Warning", JOptionPane.WARNING_MESSAGE);
-					}
+					return input;
 				}
 				else
 				{
-					socket.close();
-					System.exit(0);
+					JOptionPane.showMessageDialog(null, "Invalid account number", "Warning", JOptionPane.WARNING_MESSAGE);
 				}
 			}
-		}
-		catch(Exception e)
-		{
-			System.out.println("Cannot connect to the server");
+			else // When user clicks cancel
+			{
+				JOptionPane.showMessageDialog(null, "Goodbye", "Goodbye", JOptionPane.INFORMATION_MESSAGE);
+				System.exit(0);
+			}
 		}
 	}
 	
-	public void send(Socket socket, DataOutputStream toServer, DataInputStream fromServer)
+	/**
+	 * Checks if the input the user provided is a positive number.
+	 * @param The input provided by the user after being prompted for an account number.
+	 * @return Boolean depending if the user provided a positive number.
+	 */
+	private boolean isNumeric(String input)
+	{
+		try
+		{
+			int number = Integer.parseInt(input);  // Can only be parsed if user provided a number, e.g. ..., -2, -1, 0, 1, 2...
+			if (number >= 0) // Check if positive
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		catch (NumberFormatException error)
+		{
+			return false;
+		}
+	}
+	
+	public void establishConnection() throws UnknownHostException, IOException
+	{
+		this.socket = new Socket("localhost", 2994);
+		this.toServer = new DataOutputStream(socket.getOutputStream());
+		this.fromServer = new DataInputStream(socket.getInputStream());
+	}
+	
+	public boolean sendAccountNumber(String accountNumber) throws IOException
+	{
+		establishConnection();
+		toServer.writeUTF("AccountNumber" + "," + accountNumber);
+		String fullName = fromServer.readUTF();
+		
+		if (fullName != null)
+		{
+			JOptionPane.showMessageDialog(null, "Welcome, " + fullName);
+			return true;
+		}
+		else
+		{
+			JOptionPane.showMessageDialog(null, "Sorry, you are not a registered client", "Warning", JOptionPane.WARNING_MESSAGE);
+			return false;
+		}
+	}
+	
+	public void calculateLoan()
 	{
 		JFrame frame = new JFrame("Client");
 		JPanel panel = new JPanel();
 		
-		frame.setSize(500, 400);
+		frame.setSize(500, 300);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		frame.setLayout(new BorderLayout());
@@ -72,8 +128,6 @@ public class ClientA2
 		Container c = frame.getContentPane();
 		c.add(textArea, BorderLayout.CENTER);
 		c.add(panel, BorderLayout.NORTH);
-		
-		// JPanel + GridBagConstraints
 		
 		panel.setBorder(BorderFactory.createTitledBorder("Client"));
 		
@@ -89,7 +143,7 @@ public class ClientA2
 		submitButton.addActionListener(new ActionListener() {
 
 			@Override
-			public void actionPerformed(ActionEvent e) 
+			public void actionPerformed(ActionEvent event) 
 			{
 				String annualInterestRate = annualInterestRateField.getText();
 				String numberOfYears = numberOfYearsField.getText();
@@ -97,11 +151,11 @@ public class ClientA2
 				
 				try 
 				{
-					toServer.writeUTF(annualInterestRate + "," + numberOfYears + "," + loanAmount);
+					toServer.writeUTF("Monthly Payment: " + annualInterestRate + "," + numberOfYears + "," + loanAmount);
 					textArea.append(fromServer.readUTF() + "\n");
 				} 
 				catch (IOException error) {
-					System.out.println(error);
+					error.printStackTrace();
 				}
 			}
 			
@@ -150,17 +204,23 @@ public class ClientA2
 	{
 		try
 		{
-			Socket socket = new Socket("localhost", 2994);
-			DataOutputStream toServer = new DataOutputStream(socket.getOutputStream());
-			DataInputStream fromServer = new DataInputStream(socket.getInputStream());
-			
-			ClientA2 clientA2 = new ClientA2();
-			clientA2.login(socket, toServer, fromServer);
-			clientA2.send(socket, toServer, fromServer);
+			ClientA2 client = new ClientA2();
+			String accountNumber = client.promptAccountNumber();
+			boolean isLoginSuccessful = client.sendAccountNumber(accountNumber);
+			if (isLoginSuccessful == true)
+			{
+				client.calculateLoan();
+			}
 		}
-		catch (Exception e)
+		catch (UnknownHostException error)
 		{
-			JOptionPane.showMessageDialog(null, "Unable to connect to server", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+			System.exit(1);
+		}
+		catch (IOException error)
+		{
+			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+			System.exit(1);
 		}
 	}
 }
