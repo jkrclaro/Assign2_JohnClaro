@@ -1,5 +1,8 @@
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.DataInputStream;
@@ -11,42 +14,46 @@ import java.awt.BorderLayout;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import javax.swing.JButton;
 import java.awt.Container;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.GridBagConstraints;
 import javax.swing.BorderFactory;
 
 public class ClientA2
-{	
+{
 	private Socket socket;
-	private DataOutputStream toServer;
 	private DataInputStream fromServer;
-	
-	public ClientA2() throws UnknownHostException, IOException
+	private DataOutputStream toServer;
+
+	public ClientA2(Socket socket, DataOutputStream toServer, DataInputStream fromServer)
 	{
-		this.socket = null;
-		this.toServer = null;
-		this.fromServer = null;
+		this.socket = socket;
+		this.fromServer = fromServer;
+		this.toServer = toServer;
 	}
 	
 	/**
 	 * Start asking user for an account number.
 	 * Keep asking user until a valid account number has been provided or the user wishes to cancel the prompt.
-	 * @return A valid account number.
+	 * @return A valid account number in string format.
 	 */
 	public String promptAccountNumber()
 	{
+		String input = "";
+		
 		while (true)
 		{
-			String input = JOptionPane.showInputDialog(null, "Enter account number");
+			input = JOptionPane.showInputDialog(null, "Enter account number", "Prompt", JOptionPane.QUESTION_MESSAGE);
 			
 			if (input != null) // When user clicks OK
 			{
-				if (input.trim().isEmpty() != true && isNumeric(input) == true) // Check validity of input
+				if (input.trim().isEmpty() != true && isInteger(input) == true) // Check validity of input
 				{
 					return input;
 				}
@@ -68,11 +75,13 @@ public class ClientA2
 	 * @param The input provided by the user after being prompted for an account number.
 	 * @return Boolean depending if the user provided a positive number.
 	 */
-	private boolean isNumeric(String input)
+	private boolean isInteger(String input)
 	{
+		int number = 0;
+		
 		try
 		{
-			int number = Integer.parseInt(input);  // Can only be parsed if user provided a number, e.g. ..., -2, -1, 0, 1, 2...
+			number = Integer.parseInt(input);  // Can only be parsed if user provided a number, e.g. ..., -2, -1, 0, 1, 2...
 			if (number >= 0) // Check if positive
 			{
 				return true;
@@ -88,29 +97,54 @@ public class ClientA2
 		}
 	}
 	
-	public void establishConnection() throws UnknownHostException, IOException
+	private boolean isDouble(String input)
 	{
-		this.socket = new Socket("localhost", 2994);
-		this.toServer = new DataOutputStream(socket.getOutputStream());
-		this.fromServer = new DataInputStream(socket.getInputStream());
-	}
-	
-	public boolean sendAccountNumber(String accountNumber) throws IOException
-	{
-		establishConnection();
-		toServer.writeUTF("AccountNumber" + "," + accountNumber);
-		String fullName = fromServer.readUTF();
+		double number = 0.0;
 		
-		if (fullName != null)
+		try
 		{
-			JOptionPane.showMessageDialog(null, "Welcome, " + fullName);
-			return true;
+			number = Double.parseDouble(input);  // Can only be parsed if user provided a number, e.g. ..., -2, -1, 0, 1, 2...
+			if (number >= 0.0) // Check if positive
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
-		else
+		catch (NumberFormatException error)
 		{
-			JOptionPane.showMessageDialog(null, "Sorry, you are not a registered client", "Warning", JOptionPane.WARNING_MESSAGE);
 			return false;
 		}
+	}
+	
+	public boolean sendAccountNumber(String accountNumber)
+	{
+		String fullName = "";
+		
+		try
+		{
+			toServer.writeUTF("AccountNumber" + "," + accountNumber);
+			fullName = fromServer.readUTF();
+			
+			if (fullName.length() == 0)
+			{
+				JOptionPane.showMessageDialog(null, "Sorry, you are not a registered client", "Warning", JOptionPane.WARNING_MESSAGE);
+				return false;
+			}
+			else
+			{
+				JOptionPane.showMessageDialog(null, "Welcome, " + fullName);
+				return true;
+			}
+		}
+		catch (Exception error)
+		{
+			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+		}
+		
+		return false;
 	}
 	
 	public void calculateLoan()
@@ -118,7 +152,7 @@ public class ClientA2
 		JFrame frame = new JFrame("Client");
 		JPanel panel = new JPanel();
 		
-		frame.setSize(500, 300);
+		frame.setSize(500, 175);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		frame.setLayout(new BorderLayout());
@@ -130,14 +164,21 @@ public class ClientA2
 		c.add(panel, BorderLayout.NORTH);
 		
 		panel.setBorder(BorderFactory.createTitledBorder("Client"));
+
+		JLabel annualInterestRateValidityLabel = new JLabel("X");
+		JLabel numberOfYearsValidityLabel = new JLabel("X");
+		JLabel loanAmountValidityLabel = new JLabel("X");
 		
 		JLabel annualInterestRateLabel = new JLabel("Annual Interest Rate: ");
 		JLabel numberOfYearsLabel = new JLabel("Number Of Years: ");
 		JLabel loanAmountLabel = new JLabel("Loan Amount: ");
 		
-		JTextField annualInterestRateField = new JTextField(10);
-		JTextField numberOfYearsField = new JTextField(10);
-		JTextField loanAmountField = new JTextField(10);
+		JTextField annualInterestRateField = new JTextField(15);
+		JTextField numberOfYearsField = new JTextField(15);
+		JTextField loanAmountField = new JTextField(15);
+		
+		panel.setLayout(new GridBagLayout());
+		GridBagConstraints gridBagConstraints = new GridBagConstraints();
 		
 		JButton submitButton = new JButton("Submit");
 		submitButton.addActionListener(new ActionListener() {
@@ -149,53 +190,101 @@ public class ClientA2
 				String numberOfYears = numberOfYearsField.getText();
 				String loanAmount = loanAmountField.getText();
 				
-				try 
+				if (!annualInterestRate.trim().isEmpty() && isDouble(annualInterestRate)) 
 				{
-					toServer.writeUTF("Monthly Payment: " + annualInterestRate + "," + numberOfYears + "," + loanAmount);
-					textArea.append(fromServer.readUTF() + "\n");
-				} 
-				catch (IOException error) {
-					error.printStackTrace();
+					annualInterestRateValidityLabel.setText("O");
 				}
+				else
+				{
+					annualInterestRateValidityLabel.setText("X");
+				}
+				
+				if (!numberOfYears.trim().isEmpty() && isInteger(numberOfYears)) 
+				{
+					numberOfYearsValidityLabel.setText("O");
+				}
+				else
+				{
+					numberOfYearsValidityLabel.setText("X");
+				}
+				
+				if (!loanAmount.trim().isEmpty() && isDouble(loanAmount)) 
+				{
+					loanAmountValidityLabel.setText("O");
+				}
+				else
+				{
+					loanAmountValidityLabel.setText("X");
+				}
+				
+				textArea.setText("");
+				if (annualInterestRateValidityLabel.getText().equals("O") &&
+					numberOfYearsValidityLabel.getText().equals("O") &&
+					loanAmountValidityLabel.getText().equals("O"))
+				{
+					try 
+					{
+						toServer.writeUTF(annualInterestRate + "," + numberOfYears + "," + loanAmount);
+						textArea.setText(fromServer.readUTF());
+					} 
+					catch (IOException error) 
+					{
+						JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+					}	
+				}
+				
+				annualInterestRateValidityLabel.setVisible(true);
+				numberOfYearsValidityLabel.setVisible(true);
+				loanAmountValidityLabel.setVisible(true);
 			}
 			
 		});
 		
-		panel.setLayout(new GridBagLayout());
-		
-		GridBagConstraints gc = new GridBagConstraints();
-		gc.fill = GridBagConstraints.HORIZONTAL;
-		
 		// First Column
-		gc.gridx = 0;
-		gc.gridy = 0;
-		panel.add(annualInterestRateLabel, gc);
+		gridBagConstraints.gridx = 0;
+		gridBagConstraints.gridy = 0;
+		panel.add(annualInterestRateLabel, gridBagConstraints);
 		
-		gc.gridx = 0;
-		gc.gridy = 1;
-		panel.add(numberOfYearsLabel, gc);
+		gridBagConstraints.gridx = 0;
+		gridBagConstraints.gridy = 1;
+		panel.add(numberOfYearsLabel, gridBagConstraints);
 		
-		gc.gridx = 0;
-		gc.gridy = 2;
-		panel.add(loanAmountLabel, gc);
+		gridBagConstraints.gridx = 0;
+		gridBagConstraints.gridy = 2;
+		panel.add(loanAmountLabel, gridBagConstraints);
 		
 		// Second Column
-		gc.gridx = 1;
-		gc.gridy = 0;
-		panel.add(annualInterestRateField, gc);
+		gridBagConstraints.gridx = 1;
+		gridBagConstraints.gridy = 0;
+		panel.add(annualInterestRateField, gridBagConstraints);
 		
-		gc.gridx = 1;
-		gc.gridy = 1;
-		panel.add(numberOfYearsField, gc);
+		gridBagConstraints.gridx = 1;
+		gridBagConstraints.gridy = 1;
+		panel.add(numberOfYearsField, gridBagConstraints);
 		
-		gc.gridx = 1;
-		gc.gridy = 2;
-		panel.add(loanAmountField, gc);
+		gridBagConstraints.gridx = 1;
+		gridBagConstraints.gridy = 2;
+		panel.add(loanAmountField, gridBagConstraints);
 		
-		gc.gridx = 2;
-		gc.gridy = 2;
-		gc.gridheight = 100;
-		panel.add(submitButton, gc);
+		gridBagConstraints.gridx = 3;
+		gridBagConstraints.gridy = 2;
+		panel.add(submitButton, gridBagConstraints);
+		
+		// Third column
+		gridBagConstraints.gridx = 2;
+		gridBagConstraints.gridy = 0;
+		panel.add(annualInterestRateValidityLabel, gridBagConstraints);
+		annualInterestRateValidityLabel.setVisible(false);
+		
+		gridBagConstraints.gridx = 2;
+		gridBagConstraints.gridy = 1;
+		panel.add(numberOfYearsValidityLabel, gridBagConstraints);
+		numberOfYearsValidityLabel.setVisible(false);
+		
+		gridBagConstraints.gridx = 2;
+		gridBagConstraints.gridy = 2;
+		panel.add(loanAmountValidityLabel, gridBagConstraints);
+		loanAmountValidityLabel.setVisible(false);
 		
 		frame.setVisible(true);
 	}
@@ -204,23 +293,28 @@ public class ClientA2
 	{
 		try
 		{
-			ClientA2 client = new ClientA2();
-			String accountNumber = client.promptAccountNumber();
-			boolean isLoginSuccessful = client.sendAccountNumber(accountNumber);
-			if (isLoginSuccessful == true)
+			Socket socket = new Socket("localhost", 8000);
+			DataOutputStream fromServer = new DataOutputStream(socket.getOutputStream());
+			DataInputStream toServer = new DataInputStream(socket.getInputStream());
+			String accountNumber = "";
+			boolean loggedIn = false;
+			
+			ClientA2 client = new ClientA2(socket, fromServer, toServer);
+			
+			while (!loggedIn)
 			{
-				client.calculateLoan();
+				accountNumber = client.promptAccountNumber();
+				loggedIn = client.sendAccountNumber(accountNumber);
+				
+				if (loggedIn)
+				{
+					client.calculateLoan();
+				}
 			}
-		}
-		catch (UnknownHostException error)
-		{
-			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-			System.exit(1);
 		}
 		catch (IOException error)
 		{
 			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-			System.exit(1);
 		}
 	}
 }
