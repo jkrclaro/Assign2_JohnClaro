@@ -4,6 +4,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -162,15 +163,17 @@ public class MultiThreadedServerA2
 						updateServerLog(" > Loan amount: " + loanAmount, Color.GRAY);
 						
 						// TODO: Scientific notations ?
-						String monthlyPayment = calculateMonthlyPayment(annualInterestRate, numberOfYears, loanAmount);
-						String totalPayment = calculateTotalPayment(monthlyPayment, numberOfYears);
+						double monthlyPayment = calculateMonthlyPayment(annualInterestRate, numberOfYears, loanAmount);
+						double totalPayment = calculateTotalPayment(monthlyPayment, numberOfYears);
+						String calculatedMonthlyPayment = format(monthlyPayment);
+						String calculatedTotalPayment = format(totalPayment);
 						
 						updateServerLog("Client " + clientID + " received data: ", Color.DARK_GRAY);
-						updateServerLog(" > Monthly payment: " + monthlyPayment, Color.GRAY);
-						updateServerLog(" > Total payment: " + totalPayment, Color.GRAY);
+						updateServerLog(" > Monthly payment: " + calculatedMonthlyPayment, Color.GRAY);
+						updateServerLog(" > Total payment: " + calculatedTotalPayment, Color.GRAY);
 						
 						
-						toClient.writeUTF("Monthly payment: " + monthlyPayment + "\n" + "Total payment: " + totalPayment);
+						toClient.writeUTF("Monthly payment: " + calculatedMonthlyPayment + "\n" + "Total payment: " + calculatedTotalPayment);
 					}
 				}
 			}
@@ -216,30 +219,27 @@ public class MultiThreadedServerA2
 			return "";
 		}
 		
-		private String calculateMonthlyPayment(double annualInterestRate, double numberOfYears, double loanAmount)
+		private double calculateMonthlyPayment(double annualInterestRate, double numberOfYears, double loanAmount)
 		{	
 			annualInterestRate /= 100.0;
 			double monthlyRate = annualInterestRate / 12.0;
 			double termInMonths = numberOfYears * 12;
 			double monthlyPaymentNumber = (loanAmount * monthlyRate) / (1-Math.pow(1+monthlyRate, -termInMonths));
-			monthlyPaymentNumber = round(monthlyPaymentNumber);
-			String monthlyPaymentString = String.valueOf(monthlyPaymentNumber);
+			double monthlyPayment = round(monthlyPaymentNumber);
 			
-			return monthlyPaymentString;
+			return monthlyPayment;
 		}
 		
-		private String calculateTotalPayment(String monthlyPaymentString, double numberOfYears)
+		private double calculateTotalPayment(double monthlyPayment, double numberOfYears)
 		{
-			double monthlyPayment = Double.parseDouble(monthlyPaymentString);
 			double totalPayment = monthlyPayment * 12 * numberOfYears;
-			String totalPaymentString = String.valueOf(totalPayment);
 			
-			return totalPaymentString;
+			return totalPayment;
 		}
 		
 		private double round(double value)
 		{
-			if (Double.isNaN(value))
+			if (Double.isNaN(value) || Double.isInfinite(value))
 			{
 				return 0.0;
 			}
@@ -249,6 +249,13 @@ public class MultiThreadedServerA2
 				bigDecimal = bigDecimal.setScale(2, RoundingMode.HALF_UP);
 				return bigDecimal.doubleValue();
 			}
+		}
+		
+		private String format(double value)
+		{
+			DecimalFormat decimalFormat = new DecimalFormat("#,###.00");
+			String result = decimalFormat.format(value);
+			return result;
 		}
 	}
 	
