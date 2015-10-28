@@ -4,7 +4,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.List;
@@ -22,6 +21,9 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.text.SimpleAttributeSet;
@@ -50,6 +52,22 @@ public class MultiThreadedServerA2
 			startDatabaseConnection();
 			ServerSocket serverSocket = new ServerSocket(8000);
 			updateServerLog("Server started at " + new Date(), Color.RED);
+			frame.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent event)
+				{
+					try 
+					{
+						serverSocket.close();
+					} 
+					catch (IOException error) 
+					{
+						JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+					}
+					
+					System.exit(0);
+				}
+			});
 			
 			while (true)
 			{

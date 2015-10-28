@@ -1,8 +1,4 @@
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.DataInputStream;
@@ -16,14 +12,14 @@ import java.awt.Color;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.event.ActionEvent;
 import javax.swing.JButton;
 import java.awt.Container;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.GridBagConstraints;
 import javax.swing.BorderFactory;
 
@@ -149,16 +145,15 @@ public class ClientA2
 		return false;
 	}
 	
-	public void calculateLoan()
+	public void sendLoanDetails()
 	{
 		JFrame frame = new JFrame("Client");
 		JPanel panel = new JPanel();
 		
 		frame.setSize(500, 175);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
 		frame.setLayout(new BorderLayout());
-		
+	
 		JTextArea textArea = new JTextArea();
 		
 		Container c = frame.getContentPane();
@@ -264,6 +259,24 @@ public class ClientA2
 		gridBagConstraints.gridy = 2;
 		panel.add(submitButton, gridBagConstraints);
 		
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent event)
+			{
+				try 
+				{
+					socket.close();
+				} 
+				catch (IOException error) 
+				{
+					JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				System.out.println("Justin bBier");
+				System.exit(0);
+			}
+		});
+		
 		frame.setVisible(true);
 	}
 	
@@ -286,7 +299,7 @@ public class ClientA2
 				
 				if (loggedIn)
 				{
-					client.calculateLoan();
+					client.sendLoanDetails();
 				}
 			}
 		}
