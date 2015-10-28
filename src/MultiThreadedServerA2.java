@@ -1,6 +1,7 @@
 import java.net.Socket;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -162,7 +163,6 @@ public class MultiThreadedServerA2
 						updateServerLog(" > Number of years: " + numberOfYears, Color.GRAY);
 						updateServerLog(" > Loan amount: " + loanAmount, Color.GRAY);
 						
-						// TODO: Scientific notations ?
 						double monthlyPayment = calculateMonthlyPayment(annualInterestRate, numberOfYears, loanAmount);
 						double totalPayment = calculateTotalPayment(monthlyPayment, numberOfYears);
 						String calculatedMonthlyPayment = format(monthlyPayment);
@@ -196,11 +196,10 @@ public class MultiThreadedServerA2
 			{   
 		        // TODO: Use prepared statements instead to avoid SQL injection
 		        
-		        Statement statement = connection.createStatement();
-		        statement.executeQuery("SELECT * FROM RegisteredApplicants WHERE AccountNum = " + accountNumber);
-		        
-		        // Check what database returns
-		        ResultSet resultSet = statement.getResultSet();
+				String query = "SELECT * FROM RegisteredApplicants WHERE AccountNum = " + accountNumber;
+				PreparedStatement getApplicants = connection.prepareStatement(query);
+				
+				ResultSet resultSet = getApplicants.executeQuery();
 		        while (resultSet.next())
 		        {	
 		        	if (Integer.parseInt(accountNumber) == resultSet.getInt("AccountNum"))
