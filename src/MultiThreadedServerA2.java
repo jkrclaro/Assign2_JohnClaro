@@ -11,27 +11,31 @@ import java.io.DataInputStream;
 import java.net.ServerSocket;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
 
 // GUI
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
-
 import java.awt.BorderLayout;
+import java.awt.Color;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
+import javax.swing.JTextPane;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 public class MultiThreadedServerA2
 {	
-	private JTextArea textArea;
+	private JTextPane textPane;
 	private Connection connection;
 	
 	public MultiThreadedServerA2()
 	{
 		JFrame frame = new JFrame();
-		textArea = new JTextArea();
-		JScrollPane scrollPane = new JScrollPane(textArea);
+		textPane = new JTextPane();
+		JScrollPane scrollPane = new JScrollPane(textPane);
 		
 		frame.setTitle("Server");
 		frame.setSize(500, 300);
@@ -43,7 +47,7 @@ public class MultiThreadedServerA2
 		{
 			startDatabaseConnection();
 			ServerSocket serverSocket = new ServerSocket(8000);
-			updateServerLog("Server started at " + new Date());
+			updateServerLog("Server started at " + new Date(), Color.RED);
 			
 			while (true)
 			{
@@ -59,19 +63,29 @@ public class MultiThreadedServerA2
 	}
 
 	/**
-	 * This method ensures that a new line is created in the textArea
+	 * This method ensures that a new line is created in the textPane
 	 * @param log
 	 */
-	private void updateServerLog(String log)
+	private void updateServerLog(String log, Color colorSpecified)
 	{
-		textArea.append(log + "\n");
+		StyledDocument document = textPane.getStyledDocument();
+		SimpleAttributeSet color = new SimpleAttributeSet();
+		StyleConstants.setForeground(color, colorSpecified);
+		try
+		{
+			document.insertString(document.getLength(), log + "\n", color);
+		}
+		catch (Exception error)
+		{
+			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+		}
 	}
 	
 	private void startDatabaseConnection()
 	{
 		Properties connectionProperties = new Properties();
 		connectionProperties.put("user", "root");
-		connectionProperties.put("password", "root");
+		connectionProperties.put("password", "");
 		String serverLink = "jdbc:mysql://localhost:3306/BankDatabase";
 		
         try 
@@ -80,7 +94,7 @@ public class MultiThreadedServerA2
 		} 
         catch (SQLException error) 
         {
-			JOptionPane.showMessageDialog(null, "Unable to connect to database", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(0);
 		}
 	}
@@ -116,20 +130,20 @@ public class MultiThreadedServerA2
 					
 					if (messageFromClient.contains("AccountNumber"))
 					{	
-						updateServerLog("Starting thread for Client " + clientID + " at " + new Date());
+						updateServerLog("Starting thread for Client " + clientID + " at " + new Date(), Color.RED);
 						
 						List<String> clientData = Arrays.asList(messageFromClient.split(","));
 						
 						String fullName = queryDatabase(clientData.get(1));
 						if (fullName != "")
 						{
-							updateServerLog("Client " + clientID + "'s hostname is " + hostname);
-							updateServerLog("Client " + clientID + "'s IP address is " + ipAddress);
+							updateServerLog("Client " + clientID + "'s hostname is " + hostname, Color.BLUE);
+							updateServerLog("Client " + clientID + "'s IP address is " + ipAddress, Color.BLUE);
 							toClient.writeUTF(fullName);
 						}
 						else
 						{
-							updateServerLog("Client " + clientID + " failed to login");
+							updateServerLog("Client " + clientID + " failed to login", Color.BLUE);
 							toClient.writeUTF("");
 						}
 					}
@@ -142,14 +156,18 @@ public class MultiThreadedServerA2
 						Double numberOfYears = Double.parseDouble(clientData.get(1));
 						Double loanAmount = Double.parseDouble(clientData.get(2));
 						
-						updateServerLog("Client " + clientID + " sent data: ");
-						updateServerLog(" > Annual interest rate: " + annualInterestRate);
-						updateServerLog(" > Number of years: " + numberOfYears);
-						updateServerLog(" > Loan amount: " + loanAmount);
+						updateServerLog("Client " + clientID + " sent data: ", Color.DARK_GRAY);
+						updateServerLog(" > Annual interest rate: " + annualInterestRate, Color.GRAY);
+						updateServerLog(" > Number of years: " + numberOfYears, Color.GRAY);
+						updateServerLog(" > Loan amount: " + loanAmount, Color.GRAY);
 						
 						// TODO: Scientific notations ?
 						String monthlyPayment = calculateMonthlyPayment(annualInterestRate, numberOfYears, loanAmount);
 						String totalPayment = calculateTotalPayment(monthlyPayment, numberOfYears);
+						
+						updateServerLog("Client " + clientID + " received data: ", Color.DARK_GRAY);
+						updateServerLog(" > Monthly payment: " + monthlyPayment, Color.GRAY);
+						updateServerLog(" > Total payment: " + totalPayment, Color.GRAY);
 						
 						
 						toClient.writeUTF("Monthly payment: " + monthlyPayment + "\n" + "Total payment: " + totalPayment);
@@ -161,7 +179,7 @@ public class MultiThreadedServerA2
 				try 
 				{
 					socket.close();
-					updateServerLog("Client " + clientID + " has disconnected.");
+					updateServerLog("Client " + clientID + " has disconnected.", Color.RED);
 				} catch (Exception error) 
 				{
 					JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -169,7 +187,7 @@ public class MultiThreadedServerA2
 			}
 		}
 		
-		public String queryDatabase(String accountNumber) throws SQLException
+		private String queryDatabase(String accountNumber) throws SQLException
 		{
 			try
 			{   
@@ -198,24 +216,39 @@ public class MultiThreadedServerA2
 			return "";
 		}
 		
-		public String calculateMonthlyPayment(double annualInterestRate, double numberOfYears, double loanAmount)
+		private String calculateMonthlyPayment(double annualInterestRate, double numberOfYears, double loanAmount)
 		{	
 			annualInterestRate /= 100.0;
 			double monthlyRate = annualInterestRate / 12.0;
 			double termInMonths = numberOfYears * 12;
 			double monthlyPaymentNumber = (loanAmount * monthlyRate) / (1-Math.pow(1+monthlyRate, -termInMonths));
+			monthlyPaymentNumber = round(monthlyPaymentNumber);
 			String monthlyPaymentString = String.valueOf(monthlyPaymentNumber);
 			
 			return monthlyPaymentString;
 		}
 		
-		public String calculateTotalPayment(String monthlyPaymentString, double numberOfYears)
+		private String calculateTotalPayment(String monthlyPaymentString, double numberOfYears)
 		{
 			double monthlyPayment = Double.parseDouble(monthlyPaymentString);
 			double totalPayment = monthlyPayment * 12 * numberOfYears;
 			String totalPaymentString = String.valueOf(totalPayment);
 			
 			return totalPaymentString;
+		}
+		
+		private double round(double value)
+		{
+			if (Double.isNaN(value))
+			{
+				return 0.0;
+			}
+			else
+			{
+				BigDecimal bigDecimal = new BigDecimal(value);
+				bigDecimal = bigDecimal.setScale(2, RoundingMode.HALF_UP);
+				return bigDecimal.doubleValue();
+			}
 		}
 	}
 	

@@ -11,6 +11,8 @@ import java.io.DataInputStream;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+import java.awt.Color;
+
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
@@ -164,10 +166,6 @@ public class ClientA2
 		c.add(panel, BorderLayout.NORTH);
 		
 		panel.setBorder(BorderFactory.createTitledBorder("Client"));
-
-		JLabel annualInterestRateValidityLabel = new JLabel("X");
-		JLabel numberOfYearsValidityLabel = new JLabel("X");
-		JLabel loanAmountValidityLabel = new JLabel("X");
 		
 		JLabel annualInterestRateLabel = new JLabel("Annual Interest Rate: ");
 		JLabel numberOfYearsLabel = new JLabel("Number Of Years: ");
@@ -192,35 +190,35 @@ public class ClientA2
 				
 				if (!annualInterestRate.trim().isEmpty() && isDouble(annualInterestRate)) 
 				{
-					annualInterestRateValidityLabel.setText("O");
+					annualInterestRateLabel.setForeground(Color.GREEN);
 				}
 				else
 				{
-					annualInterestRateValidityLabel.setText("X");
+					annualInterestRateLabel.setForeground(Color.RED);
 				}
 				
 				if (!numberOfYears.trim().isEmpty() && isInteger(numberOfYears)) 
 				{
-					numberOfYearsValidityLabel.setText("O");
+					numberOfYearsLabel.setForeground(Color.GREEN);
 				}
 				else
 				{
-					numberOfYearsValidityLabel.setText("X");
+					numberOfYearsLabel.setForeground(Color.RED);
 				}
 				
 				if (!loanAmount.trim().isEmpty() && isDouble(loanAmount)) 
 				{
-					loanAmountValidityLabel.setText("O");
+					loanAmountLabel.setForeground(Color.GREEN);
 				}
 				else
 				{
-					loanAmountValidityLabel.setText("X");
+					loanAmountLabel.setForeground(Color.RED);
 				}
 				
 				textArea.setText("");
-				if (annualInterestRateValidityLabel.getText().equals("O") &&
-					numberOfYearsValidityLabel.getText().equals("O") &&
-					loanAmountValidityLabel.getText().equals("O"))
+				if (annualInterestRateLabel.getForeground() == Color.GREEN &&
+					numberOfYearsLabel.getForeground() == Color.GREEN &&
+					loanAmountLabel.getForeground() == Color.GREEN)
 				{
 					try 
 					{
@@ -232,10 +230,6 @@ public class ClientA2
 						JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 					}	
 				}
-				
-				annualInterestRateValidityLabel.setVisible(true);
-				numberOfYearsValidityLabel.setVisible(true);
-				loanAmountValidityLabel.setVisible(true);
 			}
 			
 		});
@@ -266,25 +260,9 @@ public class ClientA2
 		gridBagConstraints.gridy = 2;
 		panel.add(loanAmountField, gridBagConstraints);
 		
-		gridBagConstraints.gridx = 3;
+		gridBagConstraints.gridx = 2;
 		gridBagConstraints.gridy = 2;
 		panel.add(submitButton, gridBagConstraints);
-		
-		// Third column
-		gridBagConstraints.gridx = 2;
-		gridBagConstraints.gridy = 0;
-		panel.add(annualInterestRateValidityLabel, gridBagConstraints);
-		annualInterestRateValidityLabel.setVisible(false);
-		
-		gridBagConstraints.gridx = 2;
-		gridBagConstraints.gridy = 1;
-		panel.add(numberOfYearsValidityLabel, gridBagConstraints);
-		numberOfYearsValidityLabel.setVisible(false);
-		
-		gridBagConstraints.gridx = 2;
-		gridBagConstraints.gridy = 2;
-		panel.add(loanAmountValidityLabel, gridBagConstraints);
-		loanAmountValidityLabel.setVisible(false);
 		
 		frame.setVisible(true);
 	}
