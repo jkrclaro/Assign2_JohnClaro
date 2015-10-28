@@ -23,7 +23,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.text.SimpleAttributeSet;
@@ -35,6 +34,11 @@ public class MultiThreadedServerA2
 	private JTextPane textPane;
 	private Connection connection;
 	
+	/**
+	 * Create a server socket to start listening for new connection from clients at port 8000.
+	 * Creates a new thread when a new connection is established.
+	 * Also checks if the GUI has been closed, if it has then close the server socket.
+	 */
 	public MultiThreadedServerA2()
 	{
 		JFrame frame = new JFrame();
@@ -83,8 +87,9 @@ public class MultiThreadedServerA2
 	}
 
 	/**
-	 * This method ensures that a new line is created in the textPane
-	 * @param log
+	 * Ensures that a new line is created in the textPane.
+	 * @param log - The string that's being added to the text pane.
+	 * @param colorSpecified - Changes the color text in the text pane.
 	 */
 	private void updateServerLog(String log, Color colorSpecified)
 	{
@@ -101,6 +106,14 @@ public class MultiThreadedServerA2
 		}
 	}
 	
+	/**
+	 * Establish a database connection between the server and the database in the phpMyAdmin.
+	 * Sends user details as "root".
+	 * Sends password details as "root".
+	 * Please ensure to have the correct authentication for your phpMyAdmin database.
+	 * Connects at the port 3306 of the phpMyAdmin database.
+	 * Also, please ensure to have a database called 'BankDatabase'.
+	 */
 	private void startDatabaseConnection()
 	{
 		Properties connectionProperties = new Properties();
@@ -119,8 +132,9 @@ public class MultiThreadedServerA2
 		}
 	}
 	
-	
-	
+	/**
+	 * A class that handles the thread objects.
+	 */
 	private class MyClient extends Thread
 	{	
 		private Socket socket;
@@ -129,17 +143,39 @@ public class MultiThreadedServerA2
 		private DataOutputStream toClient;
 		private DataInputStream fromClient;
 		private long clientID;
-
-		public MyClient(Socket socket) throws IOException
+		
+		/**
+		 * Constructor for the Thread objects.
+		 * @param socket - The server socket created in the class MultiThreadedServerA2
+		 */
+		public MyClient(Socket socket)
 		{	
-			this.socket = socket;
-			this.hostname = socket.getInetAddress().getHostName();
-			this.ipAddress = socket.getInetAddress().getHostAddress();
-			this.toClient = new DataOutputStream(socket.getOutputStream());
-			this.fromClient = new DataInputStream(socket.getInputStream());
-			this.clientID = Thread.activeCount() - 1;
+			try 
+			{
+				this.socket = socket;
+				this.hostname = socket.getInetAddress().getHostName();
+				this.ipAddress = socket.getInetAddress().getHostAddress();
+				this.toClient = new DataOutputStream(socket.getOutputStream());
+				this.fromClient = new DataInputStream(socket.getInputStream());
+				this.clientID = Thread.activeCount() - 1;
+			} 
+			catch (IOException error) 
+			{
+				JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+			}
 		}
 		
+		/**
+		 * This method starts when a new thread is created.
+		 * It gets stuck in a while loop to keep sending and retrieving data for the client.
+		 * Client sends string data in two ways
+		 * 1) Client sends account number data in format: 'AccountNumber,1001' or 'AccountNumber,1002'.
+		 * 2) Client sends loan details in format: '3.5,3,5000' or '0.0,0,0'.
+		 * Therefore, we can separate the string between the ",".
+		 * So if the client sends the account number, it will then be splitted into an array, e.g.['AccountNumber','1001']
+		 * where clientData.get(0) is equal to 'AccountNumber' and clientData.get(1) is equal to '1002'.
+		 * This will mean that if clientData.get(0) doesn't equal to 'AccountNumber' then the client sent his/her loan details.
+		 */
 		public void run()
 		{	
 			try
@@ -147,14 +183,13 @@ public class MultiThreadedServerA2
 				while (true)
 				{	
 					String messageFromClient = fromClient.readUTF();
+					List<String> clientData = Arrays.asList(messageFromClient.split(","));
 					
-					if (messageFromClient.contains("AccountNumber"))
+					if (clientData.get(0).equals("AccountNumber"))
 					{	
 						updateServerLog("Starting thread for Client " + clientID + " at " + new Date(), Color.RED);
 						
-						List<String> clientData = Arrays.asList(messageFromClient.split(","));
-						
-						String fullName = queryDatabase(clientData.get(1));
+						String fullName = queryFullName(clientData.get(1));
 						if (fullName != "")
 						{
 							updateServerLog("Client " + clientID + "'s hostname is " + hostname, Color.BLUE);
@@ -168,10 +203,7 @@ public class MultiThreadedServerA2
 						}
 					}
 					else
-					{
-						List<String> clientData = Arrays.asList(messageFromClient.split(","));
-						
-						
+					{	
 						Double annualInterestRate = Double.parseDouble(clientData.get(0));
 						Double numberOfYears = Double.parseDouble(clientData.get(1));
 						Double loanAmount = Double.parseDouble(clientData.get(2));
@@ -208,14 +240,19 @@ public class MultiThreadedServerA2
 			}
 		}
 		
-		private String queryDatabase(String accountNumber) throws SQLException
+		/**
+		 * Sends a SQL query to database "BankDatabase" for a table called "RegisteredApplicants"
+		 * to check for records that matches the account number the client sent.
+		 * @param accountNumber - Account number client sent.
+		 * @return The first name and full name of the account number specified, otherwise an empty string.
+		 */
+		private String queryFullName(String accountNumber)
 		{
 			try
-			{   
-		        // TODO: Use prepared statements instead to avoid SQL injection
-		        
+			{
 				String query = "SELECT * FROM RegisteredApplicants WHERE AccountNum = " + accountNumber;
-				PreparedStatement getApplicants = connection.prepareStatement(query);
+				PreparedStatement getApplicants = connection.prepareStatement(query); 
+				// Prepared statements are better than create statements since they make SQL injections more difficult to perform.
 				
 				ResultSet resultSet = getApplicants.executeQuery();
 		        while (resultSet.next())
@@ -254,6 +291,11 @@ public class MultiThreadedServerA2
 			return totalPayment;
 		}
 		
+		/**
+		 * Rounds the value in two decimals, if the value was 123.45678, it will then be rounded up to 123.46.
+		 * @param value - Calculated monthly payment
+		 * @return Monthly payment in two decimals.
+		 */
 		private double round(double value)
 		{
 			if (Double.isNaN(value) || Double.isInfinite(value))
@@ -268,6 +310,13 @@ public class MultiThreadedServerA2
 			}
 		}
 		
+		/**
+		 * Formats the value to have commas separating the numbers, e.g.
+		 * If the value was 1234.56 then it will become 1,234.56 or
+		 * If the value was 56789.12 then it will become 56,789.12
+		 * @param value - Monthly payment in two decimals
+		 * @return Monthly payment with commas separating if necessary.
+		 */
 		private String format(double value)
 		{
 			DecimalFormat decimalFormat = new DecimalFormat("#,###.00");

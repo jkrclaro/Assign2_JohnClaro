@@ -28,7 +28,13 @@ public class ClientA2
 	private Socket socket;
 	private DataInputStream fromServer;
 	private DataOutputStream toServer;
-
+	
+	/**
+	 * Constructor class for ClientA2
+	 * @param socket - Socket object that establishes connection with the server.
+	 * @param toServer - The data stream created with the server to send data in
+	 * @param fromServer - The data stream created with the server to receive data in.
+	 */
 	public ClientA2(Socket socket, DataOutputStream toServer, DataInputStream fromServer)
 	{
 		this.socket = socket;
@@ -69,8 +75,8 @@ public class ClientA2
 	}
 	
 	/**
-	 * Checks if the input the user provided is a positive number.
-	 * @param The input provided by the user after being prompted for an account number.
+	 * Checks if the input the user provided is a positive integer number.
+	 * @param input - The input provided by the user after being prompted for an account number.
 	 * @return Boolean depending if the user provided a positive number.
 	 */
 	private boolean isInteger(String input)
@@ -95,6 +101,11 @@ public class ClientA2
 		}
 	}
 	
+	/**
+	 * Checks if the input the user provided is a positive double number.
+	 * @param input - The input provided by the user after being prompted for an account number.
+	 * @return Boolean depending if the user provided a positive number.
+	 */
 	private boolean isDouble(String input)
 	{
 		double number = 0.0;
@@ -102,6 +113,7 @@ public class ClientA2
 		try
 		{
 			number = Double.parseDouble(input);  // Can only be parsed if user provided a number, e.g. ..., -2, -1, 0, 1, 2...
+			
 			if (number >= 0.0) // Check if positive
 			{
 				return true;
@@ -117,14 +129,17 @@ public class ClientA2
 		}
 	}
 	
+	/**
+	 * Send the account number to the server using the data stream 'toServer'.
+	 * @param accountNumber - Account number specified by the client at the start.
+	 * @return Boolean depending whether the account number is in the table 'RegisteredApplicants', if it is return true, otherwise false.
+	 */
 	public boolean sendAccountNumber(String accountNumber)
-	{
-		String fullName = "";
-		
+	{	
 		try
 		{
 			toServer.writeUTF("AccountNumber" + "," + accountNumber);
-			fullName = fromServer.readUTF();
+			String fullName = fromServer.readUTF();
 			
 			if (fullName.length() == 0)
 			{
@@ -145,6 +160,14 @@ public class ClientA2
 		return false;
 	}
 	
+	/**
+	 * Create a GUI for when sending loan details.
+	 * Ask the user for an annual interest rate, number of years and the loan amount.
+	 * If the user inputs an invalid detail in annual interest rate, number of years or loan amount field
+	 * Then make the label RED to symbolize an invalid input.
+	 * Otherwise, make the label GREEN to symbolize a valid input.
+	 * Also, close the socket if the user closes the GUI.
+	 */
 	public void sendLoanDetails()
 	{
 		JFrame frame = new JFrame("Client");
@@ -183,7 +206,9 @@ public class ClientA2
 				String numberOfYears = numberOfYearsField.getText();
 				String loanAmount = loanAmountField.getText();
 				
-				if (!annualInterestRate.trim().isEmpty() && isDouble(annualInterestRate)) 
+				if (!annualInterestRate.trim().isEmpty() && 
+					isDouble(annualInterestRate) && 
+					Double.parseDouble(annualInterestRate) <= 1000) 
 				{
 					annualInterestRateLabel.setForeground(Color.GREEN);
 				}
@@ -272,14 +297,13 @@ public class ClientA2
 					JOptionPane.showMessageDialog(null, error.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 				}
 				
-				System.out.println("Justin bBier");
 				System.exit(0);
 			}
 		});
 		
 		frame.setVisible(true);
 	}
-	
+
 	public static void main(String[] args)
 	{
 		try
@@ -297,6 +321,7 @@ public class ClientA2
 				accountNumber = client.promptAccountNumber();
 				loggedIn = client.sendAccountNumber(accountNumber);
 				
+				// When logged in keep sending loan details until closed.
 				if (loggedIn)
 				{
 					client.sendLoanDetails();
